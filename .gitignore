@@ -218,3 +218,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Downloaded scores and generated outputs
+/data/raw/
+/data/processed/
+/data/derived/
+/reports/processing/
+
+# Visual Studio local settings
+.vs/
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Additional local environment files
+.env.*
+!.env.example
