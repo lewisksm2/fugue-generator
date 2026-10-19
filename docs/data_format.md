@@ -46,6 +46,7 @@ Use `null` where allowed when a value is unknown.
 | `voices` | Voice definitions. |
 | `measures` | Measure boundaries and time signatures. |
 | `events` | Notes and rests. |
+| `key_signatures` | Key changes. |
 
 IDs are nonempty strings, except the numeric voice and measure IDs below.
 
@@ -129,7 +130,29 @@ spelled pitch. An untied note uses `null`.
 Split notes or rests at barlines so every event fits inside one measure. Add ties
 for split notes, leave rests untied.
 
-## 5. Saving and later processing
+## 5. Key changes
+
+The list key_signatures contains a list of key changes. 
+
+Each key change has these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `onset_q` | Absolute position of key change. |
+| `sharps` | A signed count of the number of sharps. |
+
+Example key change: D major on bar 10 (assuming 4/4 time).
+
+```json
+{
+  "onset_q": "36",
+  "sharps": "2",
+}
+```
+
+Sharps is positive for sharps, and negative for flats.
+
+## 6. Saving and later processing
 
 Write UTF-8 JSON with two-space indentation and a final newline. Sort voices by
 ID, measures by index, and events by numeric `(onset_q, voice, id)`.
