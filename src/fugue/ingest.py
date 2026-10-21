@@ -108,6 +108,12 @@ def register_source(
     return entry["source_id"]
 
 
+def manifest_lookup(source_id: str) -> str:
+    manifest = _read_manifest(Path("data/manifest.jsonl"))
 
+    existing = next((entry for entry in manifest if entry.get("source_id") == source_id), None)
 
-
+    if existing is None:
+        raise ValueError(f"There is no entry in the manifest with source_id: {source_id}")
+    else:
+        return(existing)
