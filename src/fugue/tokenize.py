@@ -1,5 +1,6 @@
 from fractions import Fraction
-import re
+import json
+from pathlib import Path
 from fugue.schema import(
     Event,
     KeyChange,
@@ -16,6 +17,9 @@ from fugue.schema import(
     )
 from fugue.parse import(
     parse_humdrum_kern
+    )
+from fugue.ingest import(
+    _read_manifest
     )
 
 
@@ -68,7 +72,7 @@ def score_to_tokens(score: Score) -> list[str]:
         #Later version can allow changes in key here.
  
         '''Loop over events in measure'''
-        while events[event_index].onset_q < measure.onset_q+measure.duration_q:
+        while event_index < len(events) and events[event_index].onset_q < measure.onset_q+measure.duration_q:
 
             event = events[event_index]
             
@@ -207,3 +211,55 @@ def tokens_to_score(tokens: list[str]) -> Score:
         events=events,
         key_signatures=key_signatures
         )
+
+def build_vocabulary() -> dict[str, int]:
+    manifest = _read_manifest(Path("data/manifest.jsonl"))
+
+    scores=[]
+    for entry in manifest:
+        if entry["work_id"] not in ["wtc1f11", "wtc1f20"]:
+            print(entry["work_id"])
+            scores.append(parse_humdrum_kern(entry["source_id"]))
+
+    token_sequences = [
+        score_to_tokens(score)
+        for score in scores
+        ]
+
+    unique_tokens = {
+        token
+        for sequence in token_sequences
+        for token in sequence
+        }
+
+    vocabulary = ["PAD"] + sorted(unique_tokens - {"PAD"})
+
+    return {
+        token: index
+        for index, token in enumerate(vocabulary)
+        }
+
+def tokens_to_ids(tokens: list[str], vocabulary: dict[str,int]) -> list[int]: 
+    return [vocabulary[token] for token in tokens]
+
+def ids_to_tokens(ids: list[int], vocabulary: dict[str,int]) -> list[str]:
+    reverse = {
+        index: token
+        for token, index in vocabulary.items()        
+        }
+    return [reverse[index] for index in ids]
+
+def save_vocabulary(vocabulary: dict[str, int], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(vocabulary, indent=2, ensure_ascii=False)+"\n",
+        encoding="utf-8"
+        )
+
+def load_vocabulary(path: Path) -> dict[str,int]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+if __name__ == "__main__":
+    path = Path("data/derived/tokens_v1/vocabulary.json")
+    vocabulary = build_vocabulary()
+    save_vocabulary(vocabulary, path)
