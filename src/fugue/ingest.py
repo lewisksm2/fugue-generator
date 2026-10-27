@@ -117,3 +117,5 @@ def manifest_lookup(source_id: str) -> str:
         raise ValueError(f"There is no entry in the manifest with source_id: {source_id}")
     else:
         return(existing)
+
+

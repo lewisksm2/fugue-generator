@@ -256,10 +256,23 @@ def save_vocabulary(vocabulary: dict[str, int], path: Path) -> None:
         encoding="utf-8"
         )
 
-def load_vocabulary(path: Path) -> dict[str,int]:
+def load_vocabulary(path: Path=Path('data/derived/tokens_v1/vocabulary.json')) -> dict[str,int]:
     return json.loads(path.read_text(encoding="utf-8"))
 
-if __name__ == "__main__":
-    path = Path("data/derived/tokens_v1/vocabulary.json")
-    vocabulary = build_vocabulary()
-    save_vocabulary(vocabulary, path)
+
+def save_encoded_score(
+    source_id: str,
+    token_ids: list[int],
+    path: Path 
+    ) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    data = {
+        "source_id": source_id,
+        "token_ids": token_ids        
+        }
+
+    path.write_text(
+        json.dumps(data) + "\n",
+        encoding="utf-8"
+        )
