@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 
 
+
 class FugueDataset(Dataset):
     def __init__(
         self,

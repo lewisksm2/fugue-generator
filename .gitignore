@@ -225,6 +225,9 @@ __marimo__/
 /data/derived/
 /reports/processing/
 
+# Saved models
+/checkpoints/
+
 # Visual Studio local settings
 .vs/
 
