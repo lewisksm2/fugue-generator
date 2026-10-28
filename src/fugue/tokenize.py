@@ -276,3 +276,4 @@ def save_encoded_score(
         json.dumps(data) + "\n",
         encoding="utf-8"
         )
+

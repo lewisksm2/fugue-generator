@@ -1,11 +1,13 @@
 from pathlib import Path
 
 from fugue.constraints import allowed_next_tokens
+from fugue.export import export_musicxml
+from fugue.parse import parse_humdrum_kern
 
 import torch
 
 from fugue.model import FugueModel
-from fugue.tokenize import tokens_to_ids, ids_to_tokens
+from fugue.tokenize import score_to_tokens, tokens_to_ids, ids_to_tokens, tokens_to_score
 
 def load_model(path:Path, device: torch.device) -> tuple[FugueModel, dict[str,int]]:
     checkpoint= torch.load(
@@ -26,7 +28,8 @@ def generate(
     model: FugueModel,
     vocabulary: dict[str,int],
     prompt: list[str],
-    max_new_tokens: int = 1000,
+    max_new_tokens: int = 10000,
+    max_bars: int = 24,
     temperature: float = 1.0    
     ) -> list[str]:
 
@@ -54,7 +57,24 @@ def generate(
 
         generated_tokens = ids_to_tokens(generated_ids, vocabulary)
 
-        allowed_ids = tokens_to_ids(allowed_next_tokens(generated_tokens,vocabulary), vocabulary)
+        allowed_tokens = allowed_next_tokens(generated_tokens,vocabulary)
+
+        current_bar = generated_tokens.count("BAR_START")
+
+        if current_bar >= max_bars:
+            allowed_tokens = [
+                token for token in allowed_tokens 
+                if token not in {"TIE_START", "TIE_CONTINUE"}
+                ]
+
+        if (generated_tokens[-1]=="BAR_END" and current_bar >= max_bars):
+            if "SCORE_END" not in allowed_tokens:
+                raise ValueError("Reached final bar with unresolved ties")
+
+            allowed_tokens = ["SCORE_END"]
+           
+
+        allowed_ids = tokens_to_ids(allowed_tokens, vocabulary)
       
         if not allowed_ids:
             raise ValueError("No valid next token")
@@ -79,32 +99,49 @@ def generate(
 
     return ids_to_tokens(generated_ids, vocabulary)
 
+def find_bar_end_index(tokens: list[str], n: int) -> int:
+    if n < 1:
+        raise ValueError("n must be at least 1")
 
+    bar_count = 0
+
+    for index, token in enumerate(tokens):
+        if token == "BAR_END":
+            bar_count += 1
+
+            if bar_count == n:
+                return index
+
+    raise ValueError(f"Only {bar_count} complete bars found; requested {n}")
 
 def main():
     device = torch.device("cuda")
 
     model, vocabulary = load_model(Path("checkpoints/epoch_010.pt"),device)
 
-    prompt = [
-        "SCORE_START",
-        "KEY_C(0)_MAJOR",
-        "VOICE_COUNT_3",
-        "BAR_START",
-        "TS_4_4"
-        ]
+    
+    
+    score = parse_humdrum_kern("src-99688eb7307449b888140d3c8fb73148")
+    input_score_tokens=score_to_tokens(score)
+
+    prompt_end=find_bar_end_index(input_score_tokens, 3)
+
+    prompt = input_score_tokens[0:prompt_end]
 
     tokens = generate(
         model,
         vocabulary,
         prompt,
-        max_new_tokens=1000,
+        max_new_tokens=100000,
         temperature=0.8
         )
-    print(" ".join(tokens))
 
     if tokens[-1] != "SCORE_END":
-        print("\nToken limit reached before SCORE_END")
+        raise ValueError("\nToken limit reached before SCORE_END")
+
+
+    score = tokens_to_score(tokens)
+    export_musicxml(score, Path("outputs/generated.musicxml"))
 
 if __name__ == "__main__":
     main()
